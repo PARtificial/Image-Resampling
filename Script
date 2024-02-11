@@ -1,0 +1,99 @@
+% Image Resampling Script
+% This script performs resampling of a 2D digital image using bilinear interpolation. 
+% It allows for both upsampling and downsampling by an arbitrary positive float-type scale factor.
+% By Parya Payami for CS/EE-712: Image Processing Spring 2024
+
+% Flag to control the loop
+continue_processing = true;
+
+while continue_processing
+    % Prompt the user for a scale factor
+    scale_factor = input('Enter the scale factor: ');
+
+    % Validate the input to ensure it is a positive float
+    while scale_factor <= 0 || ~isfloat(scale_factor)
+        scale_factor = input('Please enter a valid positive float: ');
+    end
+
+    % Read the input image from a specified path
+    input_image = imread('C:\Users\ppayami\Desktop\MRI-brain.pgm');
+
+    % Call the resampling function
+    resampled_image = resample_image(input_image, scale_factor);
+
+    % Determine the filename based on the scale factor
+    if scale_factor < 1
+        filename = sprintf('downsampled_image_%.2f.png', scale_factor);
+    else
+        filename = sprintf('upsampled_image_%.2f.png', scale_factor);
+    end
+
+    % Save the output image
+    imwrite(resampled_image, ['C:\Users\ppayami\Desktop\', filename]);
+
+    % Ask the user to continue or stop
+    answer = input('Wanna process another one? "yes" to continue,"no" to stop: ', 's');
+    if lower(answer) == "no"
+        continue_processing = false;
+    end
+end
+
+% Function definition
+function resampled_image = resample_image(input_image, scale_factor)
+
+    % Get the size of the input image
+    [M, N] = size(input_image);
+
+    % Calculate the size of the output image
+    M_prime = round(M * scale_factor);
+    N_prime = round(N * scale_factor);
+
+    % Initialize the output image
+    resampled_image = zeros(M_prime, N_prime);
+
+    % Calculate the ratio
+    row_ratio = M / M_prime;
+    col_ratio = N / N_prime;
+
+    for i = 1:M_prime
+        for j = 1:N_prime
+            % Find the position in the input image
+            x = (i - 0.5) * row_ratio + 0.5;
+            y = (j - 0.5) * col_ratio + 0.5;
+
+            % Calculate the coordinates of the four surrounding pixels
+            x1 = floor(x);
+            x2 = ceil(x);
+            y1 = floor(y);
+            y2 = ceil(y);
+
+            % Boundary conditions (if the points go beyond the image size)
+            if x1 < 1
+                x1 = 1;
+            end
+            if x2 > M
+                x2 = M;
+            end
+            if y1 < 1
+                y1 = 1;
+            end
+            if y2 > N
+                y2 = N;
+            end
+
+            % Calculate the interpolation weights
+            Ia = (x2 - x) * (y2 - y);
+            Ib = (x - x1) * (y2 - y);
+            Ic = (x2 - x) * (y - y1);
+            Id = (x - x1) * (y - y1);
+
+            % Perform the bilinear interpolation
+            resampled_image(i,j) = Ia * input_image(x1, y1) + ...
+                                   Ib * input_image(x2, y1) + ...
+                                   Ic * input_image(x1, y2) + ...
+                                   Id * input_image(x2, y2);
+        end
+    end
+    % Convert the output image to the same class as the input image
+    resampled_image = cast(resampled_image, class(input_image));
+end
